@@ -1,33 +1,76 @@
-// app/api/locals/route.js
 import { NextResponse } from 'next/server';
+
+const RAILWAY_URL = "https://api-react-taller-production.up.railway.app/api/locals";
+
+export async function GET(request) {
+  try {
+    const token = request.headers.get('authorization');
+    const res = await fetch(RAILWAY_URL, {
+      method: 'GET',
+      headers: { 
+        'Authorization': token || '',
+        'Cache-Control': 'no-cache' 
+      },
+      cache: 'no-store'
+    });
+
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : [];
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error en GET API:", error);
+    return NextResponse.json([], { status: 500 });
+  }
+}
 
 export async function POST(request) {
   try {
     const body = await request.json();
     const token = request.headers.get('authorization');
 
-    // Validar que el token exista antes de disparar la petición
     if (!token) {
-      return NextResponse.json({ error: "No hay token de autorización" }, { status: 401 });
+      return NextResponse.json({ error: "No autorizado (falta token)" }, { status: 401 });
     }
 
-    const res = await fetch("https://api-react-taller-production.up.railway.app/api/locals", {
+    // --- NORMALIZACIÓN PARA RAILWAY ---
+    const cleanedData = {
+      name: body.name ? body.name.trim() : "Local sin nombre",
+      type: (body.type || "restaurante").toLowerCase(),
+      // Mapeamos 'economico' si viene del formulario para asegurar consistencia
+      priceRange: (body.priceRange || "medio").toLowerCase().trim(),
+      zone: (body.zone || "Sin Zona").trim(),
+      address: (body.address || "Dirección no especificada").trim(),
+      city: "Montevideo",
+      
+      // NUEVOS CAMPOS:
+      // Convertimos rating a número por si viene como string desde el formulario
+      rating: Number(body.rating) || 5, 
+      // Tomamos el horario dinámico del formulario
+      hours: body.hours ? body.hours.trim() : "09:00 - 23:00", 
+      
+      photos: body.photos && body.photos.length > 0 ? body.photos : ["https://via.placeholder.com/300"]
+    };
+
+    const res = await fetch(RAILWAY_URL, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
         'Authorization': token 
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(cleanedData)
     });
 
-    // Intentamos obtener la data
-    const data = await res.json();
+    const responseText = await res.text();
+    
+    if (!res.ok) {
+      const errorData = responseText ? JSON.parse(responseText) : {};
+      return NextResponse.json({ error: errorData.message || "Error en Railway" }, { status: res.status });
+    }
 
-    // Devolvemos la data con el mismo status code que nos dio el servidor original
-    return NextResponse.json(data, { status: res.status });
+    return NextResponse.json(JSON.parse(responseText), { status: 201 });
 
   } catch (error) {
-    console.error("Error en Proxy Locals:", error);
-    return NextResponse.json({ error: "Error interno en el servidor" }, { status: 500 });
+    console.error("Error en POST API:", error);
+    return NextResponse.json({ error: "Fallo de conexión total" }, { status: 500 });
   }
 }

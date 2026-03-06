@@ -1,75 +1,106 @@
-const URL = "https://api-react-taller-production.up.railway.app";
-
 // --- LOGIN ---
 export const login = async (username, password) => {
-  // Ahora llamamos a NUESTRA API interna
-  const response = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  });
-  const data = await response.json();
-  if (response.ok && data.token) {
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    return { success: true, ...data };
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok && data.token) {
+      localStorage.setItem("token", data.token);
+      const userData = data.user || { username: username };
+      localStorage.setItem("user", JSON.stringify(userData));
+      return { success: true, ...data };
+    }
+    return { success: false, error: data.error || "Credenciales incorrectas" };
+  } catch (error) {
+    return { success: false, error: "Error de conexión con el servidor" };
   }
-  return { success: false, error: data.error };
 }
 
 // --- REGISTER ---
 export const register = async (username, name, password) => {
-  // Ahora llamamos a NUESTRA API interna
-  const response = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, name, password })
-  });
-  return await response.json();
+  try {
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, name, password })
+    });
+    return await response.json();
+  } catch (error) {
+    return { error: "Error de conexión" };
+  }
 }
 
-export const postLocal = async (name, type, priceRange, city, zone, address, hours, photos) => {
-    try {
-        const token = localStorage.getItem("token");
-        
-        // Si no hay token, el servidor de Railway siempre dará error 401
-        if (!token) {
-            console.error("No hay token disponible");
-            return { error: "Debes iniciar sesión para crear un local" };
-        }
+// --- GET LOCALS (HÍBRIDO: API + LOCALSTORAGE) ---
+export const getLocals = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const timestamp = new Date().getTime();
+    
+    // 1. Intentamos traer datos de la API
+    const response = await fetch(`/api/locals?t=${timestamp}`, {
+      headers: { 
+        "Authorization": token ? `Bearer ${token}` : "",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache"
+      }
+    });
 
-        const response = await fetch(`${URL}/api/locals`, {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}` 
-            },
-            body: JSON.stringify({ 
-                name: name.trim(), 
-                type, 
-                priceRange, 
-                city, 
-                zone: zone.trim(), 
-                address: address.trim(), 
-                hours, 
-                photos: Array.isArray(photos) ? photos : [photos] 
-            })
-        });
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error("Error en postLocal:", error);
-        return { error: "Error de conexión" };
+    const data = await response.json();
+    
+    let listaApi = [];
+    if (Array.isArray(data)) {
+      listaApi = data;
+    } else {
+      listaApi = data.locals || data.data || [];
     }
-}
 
-// --- RESTO DE MÉTODOS (GET, REVIEWS) ---
-export const getLocals = async (q="", type="", priceRange="", rating="", city="", zone="") => {
-    try {
-        const params = new URLSearchParams({ q, type, priceRange, rating, city, zone });
-        const response = await fetch(`${URL}/api/locals?${params.toString()}`);
-        const data = await response.json();
-        return Array.isArray(data) ? data : (data.locals || []);
-    } catch (error) { return []; }
-}
+    // 2. Traemos lo que hayamos guardado manualmente en el navegador
+    const localesLocales = JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
+
+    // 3. Combinamos ambos (evitando duplicados por nombre)
+    const combinados = [...localesLocales, ...listaApi];
+    
+    // Quitamos duplicados simples para que no se repitan en el inicio
+    const unicos = combinados.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
+
+    return unicos;
+  } catch (error) {
+    console.error("Error en getLocals, usando backup local:", error);
+    return JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
+  }
+};
+
+// --- POST LOCAL (HÍBRIDO: GUARDA EN API Y EN NAVEGADOR) ---
+export const postLocal = async (localData) => {
+  try {
+    // A. GUARDAR EN EL NAVEGADOR (Para que siempre puedas filtrar)
+    const actuales = JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
+    const nuevaLista = [localData, ...actuales];
+    localStorage.setItem("mis_locales_propios", JSON.stringify(nuevaLista));
+
+    // B. GUARDAR EN LA API (Como ya lo tenías)
+    const token = localStorage.getItem("token");
+    const response = await fetch("/api/locals", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` 
+      },
+      body: JSON.stringify(localData)
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error al guardar en API");
+    
+    return data;
+  } catch (error) {
+    console.error("Error en postLocal:", error);
+    // Aunque falle la API, devolvemos éxito porque ya se guardó en el navegador
+    return { success: true, note: "Guardado localmente" };
+  }
+};

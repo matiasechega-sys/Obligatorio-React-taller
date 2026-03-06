@@ -3,32 +3,46 @@ import { useState } from 'react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({ 
+    name: '',
     username: '', 
-    name: '', 
+    email: '',
     password: '' 
   });
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+const handleRegister = async (e) => {
+  e.preventDefault();
 
-      if (res.ok) {
-        alert("¡Cuenta creada con éxito! Bienvenido a bordo.");
-        window.location.href = "/login"; 
-      } else {
-        const errorData = await res.json();
-        alert("Error: " + (errorData.error || "No se pudo realizar el registro"));
-      }
-    } catch (err) {
-      alert("Error de conexión con el servidor.");
+  try {
+
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+
+      // SOLO lo que necesita la API
+      body: JSON.stringify({
+        username: formData.username,
+        name: formData.name,
+        password: formData.password
+      })
+    });
+
+    if (res.ok) {
+
+      // GUARDAMOS EL EMAIL SOLO EN LOCAL
+      localStorage.setItem("registerEmail", formData.email);
+
+      alert("¡Cuenta creada con éxito!");
+      window.location.href = "/login";
+
+    } else {
+      const errorData = await res.json();
+      alert("Error: " + (errorData.error || "No se pudo registrar"));
     }
-  };
+
+  } catch {
+    alert("Error de conexión con el servidor");
+  }
+};
 
   return (
     <div style={pageContainer}>
@@ -38,6 +52,7 @@ export default function RegisterPage() {
         <p style={subtitleStyle}>Crea tu cuenta y descubre nuevos sabores</p>
         
         <form onSubmit={handleRegister} style={formStyle}>
+
           <div style={inputGroup}>
             <label style={labelStyle}>Nombre Completo</label>
             <input 
@@ -61,6 +76,17 @@ export default function RegisterPage() {
           </div>
 
           <div style={inputGroup}>
+            <label style={labelStyle}>Email</label>
+            <input 
+              type="email" 
+              placeholder="correo@email.com" 
+              required 
+              onChange={e => setFormData({...formData, email: e.target.value})}
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={inputGroup}>
             <label style={labelStyle}>Contraseña</label>
             <input 
               type="password" 
@@ -79,6 +105,7 @@ export default function RegisterPage() {
           >
             Registrarse ahora
           </button>
+
         </form>
 
         <p style={footerTextStyle}>
@@ -89,7 +116,8 @@ export default function RegisterPage() {
   );
 }
 
-// --- ESTILOS MODERNOS ---
+/* --- ESTILOS ORIGINALES --- */
+
 const pageContainer = {
   display: 'flex',
   justifyContent: 'center',

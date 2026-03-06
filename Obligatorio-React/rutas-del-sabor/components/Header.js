@@ -37,7 +37,7 @@ export default function Header() {
           <Link href="/" style={linkStyle}>Inicio</Link>
           {user ? (
             <>
-              <Link href="/admin" style={linkStyle}>Admin</Link>
+              <Link href="/admin" style={linkStyle}>Locales</Link>
               <span style={{ fontSize: '14px' }}>Hola, {user.name || 'Usuario'}</span>
               <button onClick={handleLogout} style={logoutButtonStyle}>Salir</button>
             </>
