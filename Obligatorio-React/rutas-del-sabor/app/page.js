@@ -1,28 +1,52 @@
-"use client"; // Siempre arriba si usas useState o useEffect
+"use client"; 
 import { useState, useEffect } from 'react';
-
-// EL ERROR SE VA SI PONES "export default function..."
+import { useRouter } from 'next/navigation'; 
+import { getLocals } from '../services/apirestaurante'; 
+import ListadoPrincipal from '../components/ListadoPrincipal';
 export default function HomePage() { 
   const [locales, setLocales] = useState([]);
   const [filtro, setFiltro] = useState("");
+  const [loading, setLoading] = useState(true); 
+  const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/locals')
-      .then(res => res.json())
-      .then(data => setLocales(data));
-  }, []);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/register');
+      return;
+    }
+
+    const cargarDatos = async () => {
+      try {
+        const data = await getLocals();
+        const lista = Array.isArray(data) ? data : (data?.locals || []);
+        setLocales(lista);
+      } catch (error) {
+        console.error("Error cargando locales:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarDatos();
+  }, [router]);
 
   const filtrados = locales.filter(l => 
-    l.name.toLowerCase().includes(filtro.toLowerCase()) || 
-    l.type.toLowerCase().includes(filtro.toLowerCase()) ||
-    l.zone.toLowerCase().includes(filtro.toLowerCase())
+    l.name?.toLowerCase().includes(filtro.toLowerCase()) || 
+    l.type?.toLowerCase().includes(filtro.toLowerCase()) || 
+    l.zone?.toLowerCase().includes(filtro.toLowerCase())
   );
 
+  if (loading && locales.length === 0) {
+    return <div style={loaderStyle}>Cargando experiencia...</div>;
+  }
+
   return (
-    <div>
-      <div style={{textAlign: 'center', marginBottom: '40px'}}>
-        <h1 style={{color: '#2c3e50', fontSize: '36px'}}>📍 Rutas del Sabor</h1>
-        <p style={{color: '#7f8c8d'}}>Busca y descubre los mejores lugares</p>
+    <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f8fafc' }}>
+      
+      {/* CABECERA Y BUSCADOR */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <h1 style={{ color: '#2c3e50', fontSize: '36px', fontWeight: '800' }}>📍 Rutas del Sabor</h1>
+        <p style={{ color: '#7f8c8d' }}>Busca y descubre los mejores lugares</p>
         <input 
           placeholder="Buscar restaurante, zona, o tipo..." 
           style={searchStyle}
@@ -30,25 +54,19 @@ export default function HomePage() {
         />
       </div>
 
-      <div style={gridStyle}>
-        {filtrados.map(local => (
-          <div key={local.id} style={cardStyle}>
-            <span style={{fontSize: '50px'}}>{local.photos?.[0] || "🍴"}</span>
-            <h3 style={{color: '#e67e22', margin: '15px 0'}}>{local.name}</h3>
-            <div style={{fontSize: '13px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase'}}>
-              {local.type}
-            </div>
-            <p style={{fontSize: '15px', margin: '10px 0'}}><strong>{local.zone}</strong></p>
-            <p style={{color: '#94a3b8', fontSize: '14px'}}>💰 {local.priceRange}</p>
-            <p style={{marginTop: '10px'}}>⭐ {local.rating}.0</p>
-          </div>
-        ))}
-      </div>
+      {/* USO DEL COMPONENTE */}
+      <ListadoPrincipal locales={filtrados} />
+
+      {/* MENSAJE DE RESULTADOS VACÍOS */}
+      {filtrados.length === 0 && !loading && (
+        <p style={{ textAlign: 'center', color: '#94a3b8', marginTop: '40px' }}>
+          No se encontraron locales que coincidan con tu búsqueda.
+        </p>
+      )}
     </div>
   );
 }
 
-// Estilos rápidos para que no se rompa nada
+// Estilos mínimos que se quedan en la página
+const loaderStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '20px', color: '#e67e22', fontWeight: 'bold' };
 const searchStyle = { width: '100%', maxWidth: '500px', padding: '16px', borderRadius: '50px', border: '2px solid #e67e22', outline: 'none', marginTop: '20px', boxShadow: '0 4px 12px rgba(230, 126, 34, 0.1)' };
-const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' };
-const cardStyle = { background: 'white', padding: '30px', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', textAlign: 'center', transition: 'transform 0.2s' };

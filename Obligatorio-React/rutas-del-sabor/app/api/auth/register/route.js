@@ -3,26 +3,30 @@ import { NextResponse } from 'next/server';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { username, password } = body;
+    const { username, name, password } = body;
 
-    // Según tu letra: sin validaciones complejas, solo que existan
-    if (!username || !password) {
+    // 1. Enviamos los datos a la API real de Railway
+    const res = await fetch("https://api-react-taller-production.up.railway.app/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, name, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
       return NextResponse.json(
-        { error: "Debes ingresar usuario y contraseña" }, 
-        { status: 400 }
+        { error: data.error || "Error al registrar en Railway" }, 
+        { status: res.status }
       );
     }
 
-    // Aquí simulamos que se guarda. 
-    // Devuelve un 201 (Created) que es lo correcto para registros.
-    return NextResponse.json({ 
-      mensaje: "Usuario registrado con éxito",
-      usuario: username 
-    }, { status: 201 });
+    // 2. Si Railway lo creó bien, devolvemos éxito a nuestro frontend
+    return NextResponse.json(data, { status: 201 });
 
   } catch (error) {
     return NextResponse.json(
-      { error: "Hubo un problema con el formato de los datos" }, 
+      { error: "Error de conexión con el servidor de registro" }, 
       { status: 500 }
     );
   }

@@ -1,30 +1,43 @@
 "use client";
 import { useState } from 'react';
+import { login } from '../../services/apirestaurante';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
+      const data = await login(username.trim(), password);
 
-      const data = await res.json();
+      console.log("Datos recibidos de la API:", data);
 
-      if (res.ok) {
+      if (data && data.token) {
+        // 1. Guardamos el token
+        localStorage.setItem("token", data.token);
+        
+        // 2. ARREGLO PARA EL "NO EXISTO":
+        // Si la API no manda el objeto user, creamos uno básico con el username
+        // para que el layout.js pueda mostrar "Hola, usuario"
+        const sessionUser = data.user || { username: username.trim(), name: username.trim() };
+        localStorage.setItem("user", JSON.stringify(sessionUser));
+        
         alert("¡Ingreso exitoso!");
-        localStorage.setItem('token', data.token);
+        
+        // 3. Forzamos recarga total para que el RootLayout lea los datos nuevos
         window.location.href = "/"; 
       } else {
-        alert("Error: " + data.error);
+        alert("Error de acceso: " + (data?.error || "Credenciales incorrectas"));
       }
     } catch (err) {
-      alert("No se pudo conectar con la API.");
+      console.error("Error crítico:", err);
+      alert("No se pudo conectar con el servidor.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -62,11 +75,10 @@ export default function LoginPage() {
 
           <button 
             type="submit" 
-            style={buttonStyle}
-            onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-            onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+            disabled={loading}
+            style={loading ? {...buttonStyle, opacity: 0.7, cursor: 'not-allowed'} : buttonStyle}
           >
-            Entrar
+            {loading ? "Verificando..." : "Entrar"}
           </button>
         </form>
 
@@ -78,90 +90,16 @@ export default function LoginPage() {
   );
 }
 
-// --- ESTILOS PARECIDOS AL REGISTER ---
-const pageContainer = {
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  minHeight: '80vh'
-};
-
-const cardStyle = {
-  backgroundColor: '#ffffff',
-  padding: '40px',
-  borderRadius: '20px',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.08)', // Sombra suave igual al register
-  width: '100%',
-  maxWidth: '400px',
-  textAlign: 'center'
-};
-
+// Estilos (Mantenemos tus constantes que están perfectas)
+const pageContainer = { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' };
+const cardStyle = { backgroundColor: '#ffffff', padding: '40px', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '100%', maxWidth: '400px', textAlign: 'center' };
 const iconContainer = { fontSize: '45px', marginBottom: '10px' };
-
-const titleStyle = {
-  color: '#2c3e50',
-  fontSize: '26px',
-  margin: '0 0 8px 0',
-  fontWeight: '800'
-};
-
-const subtitleStyle = {
-  color: '#95a5a6',
-  fontSize: '14px',
-  marginBottom: '30px',
-  lineHeight: '1.4'
-};
-
+const titleStyle = { color: '#2c3e50', fontSize: '26px', margin: '0 0 8px 0', fontWeight: '800' };
+const subtitleStyle = { color: '#95a5a6', fontSize: '14px', marginBottom: '30px', lineHeight: '1.4' };
 const formStyle = { display: 'flex', flexDirection: 'column', gap: '18px' };
-
-const inputGroup = {
-  textAlign: 'left',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '6px'
-};
-
-const labelStyle = {
-  fontSize: '12px',
-  fontWeight: '700',
-  color: '#e67e22', // Naranja del register
-  textTransform: 'uppercase',
-  letterSpacing: '0.5px'
-};
-
-const inputStyle = {
-  padding: '12px 16px',
-  borderRadius: '10px',
-  border: '2px solid #f1f2f6',
-  fontSize: '15px',
-  outline: 'none',
-  backgroundColor: '#f9f9f9',
-  transition: 'all 0.3s ease'
-};
-
-const buttonStyle = {
-  padding: '14px',
-  background: '#e67e22',
-  color: 'white',
-  border: 'none',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontWeight: 'bold',
-  fontSize: '16px',
-  marginTop: '10px',
-  transition: 'all 0.2s ease',
-  boxShadow: '0 4px 12px rgba(230, 126, 34, 0.3)'
-};
-
-const footerTextStyle = {
-  marginTop: '25px',
-  fontSize: '14px',
-  color: '#7f8c8d'
-};
-
-const linkStyle = {
-  color: '#2c3e50',
-  textDecoration: 'none',
-  fontWeight: 'bold',
-  borderBottom: '2px solid #e67e22'
-};
+const inputGroup = { textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '6px' };
+const labelStyle = { fontSize: '12px', fontWeight: '700', color: '#e67e22', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const inputStyle = { padding: '12px 16px', borderRadius: '10px', border: '2px solid #f1f2f6', fontSize: '15px', outline: 'none', backgroundColor: '#f9f9f9' };
+const buttonStyle = { padding: '14px', background: '#e67e22', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', boxShadow: '0 4px 12px rgba(230, 126, 34, 0.3)' };
+const footerTextStyle = { marginTop: '25px', fontSize: '14px', color: '#7f8c8d' };
+const linkStyle = { color: '#2c3e50', textDecoration: 'none', fontWeight: 'bold', borderBottom: '2px solid #e67e22' };
