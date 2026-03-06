@@ -1,69 +1,48 @@
-// components/Header.js
 "use client";
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
   const [user, setUser] = useState(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const loadUser = () => {
       const userData = localStorage.getItem('user');
-      
       if (userData && userData !== "undefined" && userData !== "null") {
-        try {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-        } catch (error) {
-          console.error("Error al parsear usuario:", error);
-          localStorage.removeItem('user');
-        }
+        try { setUser(JSON.parse(userData)); } catch (e) { localStorage.removeItem('user'); }
       }
     };
-
     loadUser();
-    // Escuchamos cambios en localStorage por si el login ocurre en otra pestaña
     window.addEventListener('storage', loadUser);
     return () => window.removeEventListener('storage', loadUser);
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear(); // Borramos todo (token y user)
+    localStorage.clear();
     setUser(null);
-    window.location.href = "/"; // Redirigimos al inicio
+    window.location.href = "/";
   };
 
-  // Lógica para mostrar el nombre del usuario
-  const displayName = user ? (user.name || user.username || (user.user && user.user.name) || "Usuario") : "";
+  if (!mounted) return <nav style={{ height: '75px' }}></nav>;
 
   return (
     <nav style={navStyle}>
       <div style={navContainer}>
-        {/* LOGO */}
-        <Link href="/" style={logoStyle}>
-          <span style={{ fontSize: '24px' }}>📍</span> 
-          <span style={logoTextStyle}>Rutas del Sabor</span>
+        <Link href="/" style={{ textDecoration: 'none', color: '#e67e22', fontWeight: '800', fontSize: '22px' }}>
+          📍 Rutas del Sabor
         </Link>
-        
-        {/* LINKS DE NAVEGACIÓN */}
-        <div style={navLinksStyle}>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
           <Link href="/" style={linkStyle}>Inicio</Link>
-          
-          {/* Si hay usuario, mostramos acceso a Admin */}
-          {user && <Link href="/admin" style={linkStyle}>Locales</Link>}
-          
-          {!user ? (
+          {user ? (
             <>
-              <Link href="/login" style={linkStyle}>Ingresar</Link>
-              <Link href="/register" style={registerButtonStyle}>Registrarse</Link>
+              <Link href="/admin" style={linkStyle}>Admin</Link>
+              <span style={{ fontSize: '14px' }}>Hola, {user.name || 'Usuario'}</span>
+              <button onClick={handleLogout} style={logoutButtonStyle}>Salir</button>
             </>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <span style={welcomeStyle}>
-                Hola, <strong>{displayName}</strong>
-              </span>
-              <button onClick={handleLogout} style={logoutButtonStyle}>Salir</button>
-            </div>
+            <Link href="/login" style={linkStyle}>Ingresar</Link>
           )}
         </div>
       </div>
@@ -71,9 +50,10 @@ export default function Header() {
   );
 }
 
+
 // --- ESTILOS ---
 const navStyle = { 
-  backgroundColor: '#ffffff', 
+  backgroundColor: '#ffffff',
   height: '75px', 
   width: '100%',
   display: 'flex', 
