@@ -15,6 +15,7 @@ export async function GET(request) {
     });
 
     const text = await res.text();
+    // Si Railway devuelve algo vacío, mandamos array para que el inicio no explote
     const data = text ? JSON.parse(text) : [];
     return NextResponse.json(data);
   } catch (error) {
@@ -33,21 +34,15 @@ export async function POST(request) {
     }
 
     // --- NORMALIZACIÓN PARA RAILWAY ---
+    // Aseguramos que los nombres coincidan con lo que espera tu ListadoPrincipal
     const cleanedData = {
       name: body.name ? body.name.trim() : "Local sin nombre",
       type: (body.type || "restaurante").toLowerCase(),
-      // Mapeamos 'economico' si viene del formulario para asegurar consistencia
       priceRange: (body.priceRange || "medio").toLowerCase().trim(),
       zone: (body.zone || "Sin Zona").trim(),
       address: (body.address || "Dirección no especificada").trim(),
       city: "Montevideo",
-      
-      // NUEVOS CAMPOS:
-      // Convertimos rating a número por si viene como string desde el formulario
-      rating: Number(body.rating) || 5, 
-      // Tomamos el horario dinámico del formulario
-      hours: body.hours ? body.hours.trim() : "09:00 - 23:00", 
-      
+      hours: "09:00 - 23:00",
       photos: body.photos && body.photos.length > 0 ? body.photos : ["https://via.placeholder.com/300"]
     };
 
@@ -64,7 +59,7 @@ export async function POST(request) {
     
     if (!res.ok) {
       const errorData = responseText ? JSON.parse(responseText) : {};
-      return NextResponse.json({ error: errorData.message || "Error en Railway" }, { status: res.status });
+      return NextResponse.json({ error: errorData.message || "Error en el servidor de Railway" }, { status: res.status });
     }
 
     return NextResponse.json(JSON.parse(responseText), { status: 201 });

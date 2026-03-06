@@ -41,7 +41,6 @@ export const getLocals = async () => {
     const token = localStorage.getItem("token");
     const timestamp = new Date().getTime();
     
-    // 1. Intentamos traer datos de la API
     const response = await fetch(`/api/locals?t=${timestamp}`, {
       headers: { 
         "Authorization": token ? `Bearer ${token}` : "",
@@ -59,13 +58,8 @@ export const getLocals = async () => {
       listaApi = data.locals || data.data || [];
     }
 
-    // 2. Traemos lo que hayamos guardado manualmente en el navegador
     const localesLocales = JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
-
-    // 3. Combinamos ambos (evitando duplicados por nombre)
     const combinados = [...localesLocales, ...listaApi];
-    
-    // Quitamos duplicados simples para que no se repitan en el inicio
     const unicos = combinados.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
 
     return unicos;
@@ -75,15 +69,13 @@ export const getLocals = async () => {
   }
 };
 
-// --- POST LOCAL (HÍBRIDO: GUARDA EN API Y EN NAVEGADOR) ---
+// --- POST LOCAL (HÍBRIDO) ---
 export const postLocal = async (localData) => {
   try {
-    // A. GUARDAR EN EL NAVEGADOR (Para que siempre puedas filtrar)
     const actuales = JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
     const nuevaLista = [localData, ...actuales];
     localStorage.setItem("mis_locales_propios", JSON.stringify(nuevaLista));
 
-    // B. GUARDAR EN LA API (Como ya lo tenías)
     const token = localStorage.getItem("token");
     const response = await fetch("/api/locals", {
       method: "POST",
@@ -97,10 +89,82 @@ export const postLocal = async (localData) => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Error al guardar en API");
     
-    return data;
+    return { success: true, ...data };
   } catch (error) {
     console.error("Error en postLocal:", error);
-    // Aunque falle la API, devolvemos éxito porque ya se guardó en el navegador
     return { success: true, note: "Guardado localmente" };
+  }
+};
+
+// --- GET DISHES (HÍBRIDO) ---
+export const getPlatos = async (params = {}) => {
+  try {
+    const token = localStorage.getItem("token");
+    const query = new URLSearchParams(params).toString();
+    
+    const response = await fetch(`/api/dishes?${query}`, {
+      headers: { 
+        "Authorization": token ? `Bearer ${token}` : "",
+        "Cache-Control": "no-cache"
+      }
+    });
+
+    const data = await response.json();
+    const listaApi = Array.isArray(data) ? data : (data.dishes || []);
+
+    const platosLocales = JSON.parse(localStorage.getItem("mis_platos_propios") || "[]");
+    const combinados = [...platosLocales, ...listaApi];
+    
+    // Evitamos duplicados por nombre y localId
+    const unicos = combinados.filter((v, i, a) => 
+      a.findIndex(t => t.name === v.name && t.localId === v.localId) === i
+    );
+
+    return unicos;
+  } catch (error) {
+    console.error("Error en getPlatos, usando backup local:", error);
+    return JSON.parse(localStorage.getItem("mis_platos_propios") || "[]");
+  }
+};
+
+// --- POST DISH (HÍBRIDO: IGUAL QUE POST LOCAL) ---
+export const postPlato = async (platoData) => {
+  try {
+    // 1. Limpieza de datos (Conversión de tipos para evitar errores de API)
+    const dataLimpia = {
+      ...platoData,
+      localId: Number(platoData.localId),
+      price: Number(platoData.price),
+      createdAt: new Date().toISOString()
+    };
+
+    // 2. Guardado en LocalStorage (Backup preventivo como en locales)
+    const actuales = JSON.parse(localStorage.getItem("mis_platos_propios") || "[]");
+    const nuevaLista = [dataLimpia, ...actuales];
+    localStorage.setItem("mis_platos_propios", JSON.stringify(nuevaLista));
+
+    // 3. Intento de guardado en la API
+    const token = localStorage.getItem("token");
+    const response = await fetch("/api/dishes", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` 
+      },
+      body: JSON.stringify(dataLimpia)
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+        // Lanzamos error para que lo capture el catch y devuelva el éxito local
+        throw new Error(data.error || "Error al guardar plato en API");
+    }
+
+    return { success: true, ...data };
+  } catch (error) {
+    console.error("Error en postPlato (API falló, usando local):", error);
+    // Retornamos éxito pero con nota, igual que en postLocal
+    return { success: true, note: "Guardado localmente", error: error.message };
   }
 };

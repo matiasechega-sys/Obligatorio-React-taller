@@ -8,36 +8,36 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const handleLogin = async (e) => {
-  e.preventDefault();
-  setLoading(true);
+    const data = await login(username.trim(), password);
 
-  const data = await login(username.trim(), password);
+    // 🔹 CAMBIO AQUÍ: Verificamos si existe data y token, NO data.success
+    if (data && data.token) {
+      
+      // Recuperar email guardado (opcional, por si lo necesitas)
+      const email = localStorage.getItem("registerEmail");
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-  if (data.success) {
+      const userWithEmail = {
+        ...currentUser,
+        email: email
+      };
 
-    localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(userWithEmail));
 
-    // recuperar email guardado
-    const email = localStorage.getItem("registerEmail");
+      // Éxito real: Redirigimos
+      window.location.href = "/";
 
-    const userWithEmail = {
-      ...data.user,
-      email: email
-    };
+    } else {
+      // Si llegamos acá es porque realmente hubo un error
+      alert("Error: " + (data.error || "Usuario o contraseña incorrectos"));
+    }
 
-    localStorage.setItem("user", JSON.stringify(userWithEmail));
-
-    window.location.href = "/";
-
-  } else {
-    alert("Error: " + (data.error || "Credenciales incorrectas"));
-  }
-
-  setLoading(false);
-};
-
+    setLoading(false);
+  };
   return (
     <div style={pageContainer}>
       <div style={cardStyle}>

@@ -9,10 +9,11 @@ export default function AltaLocalesComponent() {
     type: 'restaurante',
     priceRange: 'medio', 
     zone: '',
+    city: 'Montevideo', 
     address: '',
     photos: '',
-    rating: '5',        // Requisito: Puntuación
-    hours: '09:00 - 23:00' // Requisito: Horario
+    rating: '5',
+    hours: '09:00 - 23:00'
   });
 
   const handleSubmit = async (e) => {
@@ -23,11 +24,12 @@ export default function AltaLocalesComponent() {
       name: form.name.trim(),
       type: form.type,
       priceRange: form.priceRange,
+      city: form.city.trim(),
       zone: form.zone.trim(),
       address: form.address.trim(),
-      rating: Number(form.rating), // Lo enviamos como número para el filtro
+      rating: Number(form.rating),
       hours: form.hours.trim(),
-      photos: [form.photos.trim() || "https://via.placeholder.com/300"]
+      photos: form.photos.trim() ? [form.photos.trim()] : []
     };
 
     try {
@@ -38,9 +40,8 @@ export default function AltaLocalesComponent() {
       } else {
         alert(`❌ Error: ${data.error || "No se pudo crear el local"}`);
       }
-    } catch (err) {
-      console.error("Error en la petición:", err);
-      alert("🚨 Error de conexión.");
+    } catch {
+      alert("🚨 Error de conexión con el servidor.");
     } finally {
       setLoading(false);
     }
@@ -53,8 +54,6 @@ export default function AltaLocalesComponent() {
       <p style={subtitleStyle}>Completa los datos para la nueva Ruta del Sabor</p>
 
       <form onSubmit={handleSubmit} style={formStyle}>
-        
-        {/* NOMBRE */}
         <div style={inputGroup}>
           <label style={labelStyle}>Nombre del Local</label>
           <input 
@@ -62,8 +61,7 @@ export default function AltaLocalesComponent() {
             value={form.name} onChange={e => setForm({...form, name: e.target.value})} 
           />
         </div>
-        
-        {/* TIPO Y PRECIO */}
+
         <div style={{ display: 'flex', gap: '15px' }}>
           <div style={{ flex: 1, ...inputGroup }}>
             <label style={labelStyle}>Tipo</label>
@@ -77,7 +75,7 @@ export default function AltaLocalesComponent() {
           </div>
 
           <div style={{ flex: 1, ...inputGroup }}>
-            <label style={labelStyle}>Precio</label>
+            <label style={labelStyle}>Precio esperado</label>
             <select style={inputStyle} value={form.priceRange} onChange={e => setForm({...form, priceRange: e.target.value})}>
               <option value="economico">Económico (💰)</option>
               <option value="medio">Medio (💰💰)</option>
@@ -86,59 +84,60 @@ export default function AltaLocalesComponent() {
           </div>
         </div>
 
-        {/* PUNTUACIÓN Y HORARIO */}
         <div style={{ display: 'flex', gap: '15px' }}>
           <div style={{ flex: 1, ...inputGroup }}>
-            <label style={labelStyle}>Puntuación (1-5)</label>
+            <label style={labelStyle}>Puntuación</label>
             <select style={inputStyle} value={form.rating} onChange={e => setForm({...form, rating: e.target.value})}>
-              {[5,4,3,2,1].map(n => <option key={n} value={n}>⭐ {n}</option>)}
+              {[5,4,3,2,1].map(n => <option key={n} value={n}>⭐ {n} Estrellas</option>)}
             </select>
           </div>
 
           <div style={{ flex: 1, ...inputGroup }}>
             <label style={labelStyle}>Horario</label>
-            <input 
-              placeholder="Ej: 09:00 - 21:00" style={inputStyle} 
+            <input placeholder="09:00 - 21:00" style={inputStyle} required
               value={form.hours} onChange={e => setForm({...form, hours: e.target.value})} 
             />
           </div>
         </div>
 
-        {/* ZONA Y DIRECCIÓN */}
-        <div style={inputGroup}>
-          <label style={labelStyle}>Barrio / Zona / Ciudad</label>
-          <input 
-            placeholder="Ej: Centro, Montevideo" required style={inputStyle} 
-            value={form.zone} onChange={e => setForm({...form, zone: e.target.value})} 
-          />
+        <div style={{ display: 'flex', gap: '15px' }}>
+          <div style={{ flex: 1, ...inputGroup }}>
+            <label style={labelStyle}>Ciudad</label>
+            <input placeholder="Ej: Montevideo" required style={inputStyle} 
+              value={form.city} onChange={e => setForm({...form, city: e.target.value})} 
+            />
+          </div>
+          <div style={{ flex: 1, ...inputGroup }}>
+            <label style={labelStyle}>Barrio / Zona</label>
+            <input placeholder="Ej: Pocitos" required style={inputStyle} 
+              value={form.zone} onChange={e => setForm({...form, zone: e.target.value})} 
+            />
+          </div>
         </div>
         
         <div style={inputGroup}>
           <label style={labelStyle}>Dirección Exacta</label>
-          <input 
-            placeholder="Ej: Av. 18 de Julio 1234" required style={inputStyle} 
+          <input placeholder="Ej: Av. 18 de Julio 1234" required style={inputStyle} 
             value={form.address} onChange={e => setForm({...form, address: e.target.value})} 
           />
         </div>
 
-        {/* IMAGEN */}
         <div style={inputGroup}>
           <label style={labelStyle}>URL de Imagen (Opcional)</label>
-          <input 
-            placeholder="http://imagen.com/foto.jpg" style={inputStyle} 
+          <input placeholder="http://..." style={inputStyle} 
             value={form.photos} onChange={e => setForm({...form, photos: e.target.value})} 
           />
         </div>
 
         <button type="submit" disabled={loading} style={buttonStyle}>
-          {loading ? "Publicando..." : "Publicar Local"}
+          {loading ? "Enviando datos..." : "Publicar Local"}
         </button>
       </form>
     </div>
   );
 }
 
-// --- ESTILOS (Mantenemos tu diseño) ---
+// --- Estilos ---
 const containerStyle = { maxWidth: '550px', margin: '40px auto', padding: '40px', background: 'white', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', textAlign: 'center' };
 const iconContainer = { fontSize: '45px', marginBottom: '10px' };
 const titleStyle = { color: '#2c3e50', fontSize: '26px', fontWeight: '800', margin: '0 0 8px 0' };
