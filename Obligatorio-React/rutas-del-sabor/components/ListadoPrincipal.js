@@ -1,6 +1,6 @@
 "use client";
 
-export default function ListadoPrincipal({ locales }) {
+export default function ListadoPrincipal({ locales, onSeleccionarLocal }) { // <--- Recibimos la prop
   const listaSegura = Array.isArray(locales) ? locales : [];
 
   if (listaSegura.length === 0) {
@@ -23,7 +23,6 @@ export default function ListadoPrincipal({ locales }) {
         const zona = local.zone || local.barrio || "Montevideo";
         const precioRaw = String(local.priceRange || local.precio || "medio").toLowerCase().trim();
         
-        // PUNTUACIÓN Y HORA (Nuevos campos)
         const puntuacion = Number(local.rating || 5);
         const horario = local.hours || "Consultar horario";
 
@@ -32,12 +31,16 @@ export default function ListadoPrincipal({ locales }) {
           : "https://via.placeholder.com/300";
 
         return (
-          <div key={local.id || local._id || index} style={cardStyle}>
+          <div 
+            key={local.id || local._id || index} 
+            style={cardStyle}
+            onClick={() => onSeleccionarLocal && onSeleccionarLocal(local)} // <--- Acción al hacer clic
+          >
             <div style={{ marginBottom: '15px' }}>
                 <img 
-                    src={foto} 
-                    alt={nombre} 
-                    style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '15px' }} 
+                  src={foto} 
+                  alt={nombre} 
+                  style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '15px' }} 
                 />
             </div>
 
@@ -51,12 +54,10 @@ export default function ListadoPrincipal({ locales }) {
               📍 <strong>{zona}</strong>
             </p>
 
-            {/* Visualización del Horario */}
             <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '10px' }}>
               🕒 {horario}
             </p>
 
-            {/* Visualización de Estrellas Dinámicas */}
             <div style={{ marginBottom: '12px' }}>
               {Array.from({ length: 5 }).map((_, i) => (
                 <span key={i} style={{ color: i < puntuacion ? '#f1c40f' : '#e2e8f0', fontSize: '16px' }}>
@@ -72,6 +73,9 @@ export default function ListadoPrincipal({ locales }) {
                {precioRaw.includes('alto') ? '💰💰💰 ALTO' : 
                 precioRaw.includes('medio') ? '💰💰 MEDIO' : '💰 ECONÓMICO'}
             </div>
+            
+            {/* Pequeño indicador visual de que es clickeable */}
+            <div style={verMasStyle}>Ver detalles →</div>
           </div>
         );
       })}
@@ -94,7 +98,17 @@ const cardStyle = {
   boxShadow: '0 4px 20px rgba(0,0,0,0.04)', 
   textAlign: 'center',
   border: '1px solid #f1f5f9',
-  position: 'relative'
+  position: 'relative',
+  cursor: 'pointer', // <--- Cursor de mano
+  transition: 'transform 0.2s ease', // Efecto suave
+  ":hover": { transform: 'translateY(-5px)' } 
+};
+
+const verMasStyle = {
+  marginTop: '15px',
+  fontSize: '12px',
+  fontWeight: 'bold',
+  color: '#e67e22'
 };
 
 const priceBadgeStyle = (p) => ({

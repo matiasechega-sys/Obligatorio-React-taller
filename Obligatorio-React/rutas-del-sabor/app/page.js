@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { getLocals, getPlatos } from '../services/apirestaurante'; 
 import ListadoPrincipal from '../components/ListadoPrincipal';
+import DetalleLocalComponent from '../components/DetalleLocalComponent'; // Importamos el componente
 
 export default function HomePage() { 
   const [locales, setLocales] = useState([]);
@@ -12,6 +13,7 @@ export default function HomePage() {
   const [vista, setVista] = useState("locales"); 
   const [loading, setLoading] = useState(true); 
   const [user, setUser] = useState(null);
+  const [localSeleccionado, setLocalSeleccionado] = useState(null); // NUEVO ESTADO
   const router = useRouter();
 
   const cargarDatos = useCallback(async () => {
@@ -58,6 +60,17 @@ export default function HomePage() {
 
   if (loading) return <div style={loaderStyle}>Sincronizando la Ruta del Sabor...</div>;
 
+  // LOGICA PARA MOSTRAR DETALLE
+  if (localSeleccionado) {
+    return (
+      <DetalleLocalComponent 
+        local={localSeleccionado} 
+        platos={platos.filter(p => String(p.localId) === String(localSeleccionado.id) || p.localId === localSeleccionado.name)} 
+        onVolver={() => setLocalSeleccionado(null)} 
+      />
+    );
+  }
+
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', minHeight: '100vh' }}>
       
@@ -66,11 +79,6 @@ export default function HomePage() {
         <h2 style={{ margin: 0, fontSize: '18px', color: '#e67e22' }}>Bienvenido, {user?.username || 'Gourmet'}</h2>
         
         <div style={{ display: 'flex', gap: '10px' }}>
-          {/* BOTÓN PARA IR AL ALTA DE PLATOS */}
-          <button onClick={() => router.push('/platos')} style={addButtonStyle}>
-            ➕ Nuevo Plato
-          </button>
-          
           <button onClick={() => router.push('/perfil')} style={profileButtonStyle}>
             <div style={avatarStyle}>{user?.username?.charAt(0).toUpperCase() || "U"}</div>
             <span style={{ fontWeight: '600' }}>Mi Perfil</span>
@@ -103,9 +111,13 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* RENDERIZADO */}
+      {/* RENDERIZADO CONDICIONAL */}
       {vista === "locales" ? (
-        <ListadoPrincipal locales={localesFiltrados} />
+        /* Pasamos una prop al listado para que sepa qué hacer al clickear un local */
+        <ListadoPrincipal 
+          locales={localesFiltrados} 
+          onSeleccionarLocal={(local) => setLocalSeleccionado(local)} 
+        />
       ) : (
         <div style={gridPlatos}>
           {platosFiltrados.length > 0 ? (
@@ -133,18 +145,7 @@ export default function HomePage() {
   );
 }
 
-// --- ESTILOS ADICIONALES ---
-const addButtonStyle = { 
-  padding: '8px 16px', 
-  borderRadius: '50px', 
-  border: 'none', 
-  background: '#2c3e50', 
-  color: 'white', 
-  fontWeight: 'bold', 
-  cursor: 'pointer',
-  boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-};
-
+// ... (Estilos se mantienen igual)
 const tabsContainer = { display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' };
 const tabActive = { padding: '10px 20px', borderRadius: '50px', border: 'none', background: '#e67e22', color: 'white', fontWeight: 'bold', cursor: 'pointer' };
 const tabInactive = { padding: '10px 20px', borderRadius: '50px', border: '1px solid #ddd', background: 'white', color: '#666', cursor: 'pointer' };
