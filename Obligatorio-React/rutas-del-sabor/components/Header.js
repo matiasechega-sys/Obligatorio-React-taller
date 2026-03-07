@@ -35,11 +35,20 @@ export default function Header() {
         </Link>
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
           <Link href="/" style={linkStyle}>Inicio</Link>
+          
           {user ? (
             <>
-              <Link href="/Locales" style={linkStyle}>Locales</Link>
-              <Link href="/Platos" style={linkStyle}>Platos</Link>
-              <span style={{ fontSize: '14px' }}>Hola, {user.name || 'Usuario'}</span>
+              {/* MANTENEMOS: Acceso a la página de Mis Rutas */}
+              <Link href="/rutas" style={misRutasLinkStyle}>
+                Mis Rutas
+              </Link>
+
+              {/* BORRADO: El acceso al Panel de Carga (Perfil) ya no está aquí */}
+              
+              <span style={{ fontSize: '14px', color: '#334155', fontWeight: '600' }}>
+                Hola, {user.username || 'Usuario'}
+              </span>
+              
               <button onClick={handleLogout} style={logoutButtonStyle}>Salir</button>
             </>
           ) : (
@@ -50,7 +59,6 @@ export default function Header() {
     </nav>
   );
 }
-
 
 // --- ESTILOS ---
 const navStyle = { 
@@ -75,26 +83,6 @@ const navContainer = {
   alignItems: 'center' 
 };
 
-const logoStyle = { 
-  textDecoration: 'none', 
-  display: 'flex', 
-  alignItems: 'center', 
-  gap: '8px' 
-};
-
-const logoTextStyle = { 
-  color: '#e67e22', 
-  fontSize: '22px', 
-  fontWeight: '800', 
-  letterSpacing: '-0.5px' 
-};
-
-const navLinksStyle = { 
-  display: 'flex', 
-  alignItems: 'center', 
-  gap: '25px' 
-};
-
 const linkStyle = { 
   color: '#64748b', 
   textDecoration: 'none', 
@@ -103,20 +91,13 @@ const linkStyle = {
   transition: 'color 0.2s ease' 
 };
 
-const registerButtonStyle = { 
-  backgroundColor: '#e67e22', 
-  color: '#ffffff', 
-  padding: '10px 20px', 
-  borderRadius: '12px', 
-  textDecoration: 'none', 
-  fontSize: '14px', 
-  fontWeight: 'bold',
-  transition: 'transform 0.2s'
-};
-
-const welcomeStyle = { 
-  fontSize: '14px', 
-  color: '#334155' 
+const misRutasLinkStyle = {
+  ...linkStyle,
+  color: '#e67e22', 
+  backgroundColor: '#fff3e0',
+  padding: '6px 12px',
+  borderRadius: '8px',
+  fontSize: '14px'
 };
 
 const logoutButtonStyle = { 

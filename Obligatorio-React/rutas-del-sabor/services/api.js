@@ -1,23 +1,29 @@
 const URL = "https://api-react-taller-production.up.railway.app";
 
+// --- HELPERS ---
+const getAuthToken = () => localStorage.getItem("token");
+
+const cleanIdParam = (id) => {
+  if (!id) return "";
+  // Limpia caracteres especiales y espacios para evitar errores de URL
+  return String(id).replace(/[^a-zA-Z0-9]/g, '').trim();
+};
+
 // --- AUTENTICACIÓN ---
-const register = async (username, name, password) => {
+export const register = async (username, name, password) => {
   try {
     const response = await fetch(`${URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, name, password }),
     });
-    const data = await response.json();
-    console.log("Información de Register", data);
-    return data;
+    return await response.json();
   } catch (error) {
-    console.error("Error en Register:", error);
     return { error: "Error de conexión" };
   }
 };
 
-const login = async (username, password) => {
+export const login = async (username, password) => {
   try {
     const response = await fetch(`${URL}/api/auth/login`, {
       method: "POST",
@@ -25,179 +31,137 @@ const login = async (username, password) => {
       body: JSON.stringify({ username, password }),
     });
     const data = await response.json();
-
     if (response.ok) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
     }
-
-    console.log("Login", data);
     return data;
   } catch (error) {
-    console.error("Error en Login:", error);
     return { error: "Error de conexión" };
   }
 };
 
 // --- LOCALES ---
-const getLocals = async (q = "", type = "", priceRange = "", rating = "", city = "", zone = "") => {
+export const getLocals = async (q = "", type = "", priceRange = "", rating = "", city = "", zone = "") => {
   try {
-    // 1. Intentamos traer datos de la API con filtros
-    const response = await fetch(
-      `${URL}/api/locals?q=${q}&type=${type}&priceRange=${priceRange}&rating=${rating}&city=${city}&zone=${zone}`
-    );
+    const response = await fetch(`/api/locals?q=${q}&type=${type}&priceRange=${priceRange}&rating=${rating}&city=${city}&zone=${zone}`);
     const data = await response.json();
-    
     const listaApi = Array.isArray(data) ? data : [];
-
-    // 2. Traemos locales guardados manualmente en el navegador (Híbrido)
     const localesLocales = JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
-
-    // 3. Combinamos y quitamos duplicados por nombre
-    const combinados = [...localesLocales, ...listaApi];
-    const unicos = combinados.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
-
-    return unicos;
+    const combinados = [...listaApi, ...localesLocales];
+    return combinados.filter((v, i, a) => a.findIndex(t => t.name === v.name) === i);
   } catch (error) {
-    console.error("Error obteniendo locales, usando backup local:", error);
     return JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
   }
 };
 
-const postLocal = async ({ name, type, priceRange, city, zone, address, hours, photos = [], rating = 5 }) => {
+export const postLocal = async (localData) => {
   try {
-    // Guardado local preventivo
-    const actuales = JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
-    localStorage.setItem("mis_locales_propios", JSON.stringify([{ name, type, priceRange, city, zone, address, hours, photos, rating }, ...actuales]));
-
-    const token = localStorage.getItem("token");
-    const response = await fetch(`${URL}/api/locals`, {
+    const token = getAuthToken();
+    const response = await fetch(`/api/locals`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({ name, type, priceRange, city, zone, address, hours, photos, rating }),
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify(localData),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Error al crear el local");
-    return data;
+    if (!response.ok) throw new Error(data.error || "Error al crear local");
+    return { success: true, ...data };
   } catch (error) {
-    console.error("Error creando local:", error);
-    return { success: true, note: "Guardado localmente" };
-  }
-};
-
-const getLocal = async (id) => {
-  try {
-    const response = await fetch(`${URL}/api/locals/${id}`);
-    return await response.json();
-  } catch (error) {
-    console.error("Error obteniendo local:", error);
-    return null;
+    const actuales = JSON.parse(localStorage.getItem("mis_locales_propios") || "[]");
+    const localTemp = { ...localData, _id: `temp-${Date.now()}` };
+    localStorage.setItem("mis_locales_propios", JSON.stringify([localTemp, ...actuales]));
+    return { success: true, note: "Guardado local", data: localTemp };
   }
 };
 
 // --- PLATOS (DISHES) ---
-const getPlatos = async (params = {}) => {
+export const getPlatos = async (params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${URL}/api/dishes?${query}`);
+    const response = await fetch(`/api/dishes?${query}`);
     const data = await response.json();
-    
     const listaApi = Array.isArray(data) ? data : (data.dishes || []);
-
-    // Recuperar platos creados localmente
     const platosLocales = JSON.parse(localStorage.getItem("mis_platos_propios") || "[]");
-
-    // Combinar y eliminar duplicados
-    const combinados = [...platosLocales, ...listaApi];
-    const unicos = combinados.filter((v, i, a) => 
-      a.findIndex(t => t.name === v.name && t.localId === v.localId) === i
-    );
-
-    return unicos;
+    const combinados = [...listaApi, ...platosLocales];
+    return combinados.filter((v, i, a) => a.findIndex(t => (t._id === v._id || t.name === v.name)) === i);
   } catch (error) {
-    console.error("Error obteniendo platos:", error);
     return JSON.parse(localStorage.getItem("mis_platos_propios") || "[]");
   }
 };
 
-const postPlato = async (platoData) => {
+export const postPlato = async (platoData) => {
   try {
-    // Persistencia local inmediata
-    const actuales = JSON.parse(localStorage.getItem("mis_platos_propios") || "[]");
-    const nuevoPlato = { ...platoData, id: Date.now(), createdAt: new Date().toISOString() };
-    localStorage.setItem("mis_platos_propios", JSON.stringify([nuevoPlato, ...actuales]));
-
-    const token = localStorage.getItem("token");
-    const response = await fetch(`${URL}/api/dishes`, {
+    const token = getAuthToken();
+    const response = await fetch(`/api/dishes`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify(platoData),
     });
-
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Error al crear el plato");
-    
+    if (!response.ok) throw new Error(data.error || "Error al crear plato");
     return { success: true, ...data };
   } catch (error) {
-    console.error("Error creando plato:", error);
-    return { success: true, note: "Plato guardado localmente" };
+    const actuales = JSON.parse(localStorage.getItem("mis_platos_propios") || "[]");
+    const nuevoPlato = { ...platoData, _id: `temp-${Date.now()}` };
+    localStorage.setItem("mis_platos_propios", JSON.stringify([nuevoPlato, ...actuales]));
+    return { success: true, note: "Guardado local", data: nuevoPlato };
   }
 };
 
-const getPlato = async (id) => {
+// --- REVIEWS ---
+export const postReviewLocal = async (id, rating, comment) => {
   try {
-    const response = await fetch(`${URL}/api/dishes/${id}`);
-    return await response.json();
+    const cleanId = cleanIdParam(id);
+    if (!cleanId || cleanId.startsWith('temp')) throw new Error("ID no válido para reseña");
+    const token = getAuthToken();
+    const response = await fetch(`/api/locals/${cleanId}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ rating: Number(rating), comment }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error en reseña");
+    return { success: true, ...data };
   } catch (error) {
-    console.error("Error obteniendo plato:", error);
-    return null;
+    return { success: false, error: error.message };
   }
 };
 
-// --- USUARIOS Y REVIEWS ---
-const getUser = async (id) => {
+export const postReviewPlato = async (id, rating, comment) => {
   try {
-    const response = await fetch(`${URL}/api/users/${id}`);
+    const cleanId = cleanIdParam(id);
+    if (!cleanId || cleanId.startsWith('temp')) throw new Error("ID no válido para reseña");
+    const token = getAuthToken();
+    const response = await fetch(`/api/dishes/${cleanId}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ rating: Number(rating), comment }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error en reseña de plato");
+    return { success: true, ...data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+export const getUser = async (id) => {
+  try {
+    const cleanId = cleanIdParam(id);
+    const response = await fetch(`${URL}/api/users/${cleanId}`);
     return await response.json();
   } catch (error) {
     console.error("Error obteniendo usuario:", error);
     return null;
   }
 };
-
-const postReview = async (id, rating, comment) => {
-  try {
-    const token = localStorage.getItem("token");
-    const response = await fetch(`${URL}/api/locals/${id}/reviews`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({ rating, comment }),
-    });
-    return await response.json();
-  } catch (error) {
-    console.error("Error creando review:", error);
-    return { error: "Error de conexión" };
-  }
-};
-
 export {
   register,
   login,
   getLocals,
   postLocal,
-  getLocal,
   getPlatos,
   postPlato,
-  getPlato,
   getUser,
-  postReview,
+  postReviewLocal,
+  postReviewPlato,
 };

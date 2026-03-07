@@ -168,3 +168,57 @@ export const postPlato = async (platoData) => {
     return { success: true, note: "Guardado localmente", error: error.message };
   }
 };
+
+
+export const postReviewLocal = async (localId, reviewData) => {
+  try {
+    const token = localStorage.getItem("token");
+    // Llamamos a tu API de Next.js que creamos anteriormente
+    const response = await fetch(`/api/locals/${localId}/reviews`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : "",
+      },
+      body: JSON.stringify({
+        rating: Number(reviewData.puntuacion),
+        comment: reviewData.comentario
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error al publicar reseña");
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error en postReviewLocal:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// --- POST REVIEW DISH (PLATO) ---
+export const postReviewPlato = async (platoId, reviewData) => {
+  try {
+    const token = localStorage.getItem("token");
+    // Asumiendo que crearás la ruta /api/dishes/[id]/reviews similar a la de locales
+    const response = await fetch(`/api/dishes/${platoId}/reviews`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : "",
+      },
+      body: JSON.stringify({
+        rating: Number(reviewData.puntuacion),
+        comment: reviewData.comentario
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error al publicar reseña del plato");
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error en postReviewPlato:", error);
+    return { success: false, error: error.message };
+  }
+};
